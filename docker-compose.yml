@@ -1,0 +1,65 @@
+services:
+  database:
+    image: mariadb:10.11.8-jammy
+    container_name: mariadb_compose_container
+    environment:
+      - ALLOW_EMPTY_PASSWORD=no
+      - MARIADB_ROOT_PASSWORD=1234
+      - MARIADB_USER=yhood
+      - MARIADB_DATABASE=jpa_db
+      - MARIADB_PASSWORD=1234
+      - TZ=Asia/Seoul
+    ports:
+      - '3307:3306'
+    networks:
+      - compose_network
+    volumes: 
+      - ./database/mariadb/data:/var/lib/mysql 
+      - ./database/mariadb/conf.d:/etc/mysql/conf.d 
+      - ./database/mariadb/var/log/maria:/var/log/maria
+    command: 
+      - "--character-set-server=utf8mb4" 
+      - "--collation-server=utf8mb4_unicode_ci" 
+    restart: always 
+  backend:
+    build:
+      context: ./backend/docker_jpa_test
+      dockerfile: Dockerfile
+    container_name: springboot_compose_container
+    ports:
+      - '8090:8080'
+    environment:
+     TZ: Asia/Seoul
+      #SPRING_DATASOURCE_URL: jdbc:mariadb://database:3306/jpa_db?useSSL=false
+      #SPRING_DATASOURCE_USERNAME: yhood
+      #SPRING_DATASOURCE_PASSWORD: 1234 
+    networks:
+      - compose_network
+    volumes:
+      - ./backend/docker_jpa_test:/app
+    working_dir: /app
+    depends_on:
+      - database
+#    restart: always
+  frontend:
+    build:
+      context: ./frontend/shop
+      dockerfile: Dockerfile
+    container_name: react_compose_container
+    ports:
+      - '3030:3000'
+    environment:
+      - WATCHPACK_POLLING=true  
+      - WDS_SOCKET_PORT=0
+    networks:
+      - compose_network 
+    volumes:
+      - /app/node_modules    
+      - ./frontend/shop:/app  
+    working_dir: /app
+    stdin_open: true
+    depends_on:
+      - backend
+#    restart: always
+networks:
+  compose_network:
